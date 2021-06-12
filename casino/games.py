@@ -305,6 +305,20 @@ class Blackjack:
         return result, amount, embed, message
 
     async def bj_loop(self, ctx, ph, dh, count, condition2, message: discord.Message):
+        row_of_buttons = [
+            ActionRow(
+                Button(
+                    style=ButtonStyle.green,
+                    label="Hit",
+                    custom_id="hit",
+                ),
+                Button(
+                    style=ButtonStyle.red,
+                    label="Stay",
+                    custom_id="stay",
+                ),
+            ),
+        ]
         while count < 21:
             ph = deck.deal(hand=ph)
             count = deck.bj_count(hand=ph)
@@ -313,9 +327,9 @@ class Blackjack:
                 break
             embed = self.bj_embed(ctx, ph, dh, count)
             if not await self.old_message_cache.get_guild(ctx.guild):
-                await message.edit(content=ctx.author.mention, embed=embed)
+                await message.edit(content=ctx.author.mention, embed=embed, components=row_of_buttons)
             else:
-                await ctx.send(content=ctx.author.mention, embed=embed)
+                await ctx.send(content=ctx.author.mention, embed=embed, components=row_of_buttons)
             def is_author(inter):
             # Note that this check must take only 1 arg
                 return inter.author == ctx.author
