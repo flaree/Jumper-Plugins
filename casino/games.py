@@ -15,6 +15,7 @@ from redbot.core.utils.predicates import MessagePredicate
 
 # Discord
 import discord
+from dislash import *
 
 
 _ = Translator("Casino", __file__)
@@ -181,8 +182,10 @@ class Blackjack:
         return result
 
     async def blackjack_game(self, ctx, amount):
+        global ph
         ph = deck.deal(num=2)
         ph_count = deck.bj_count(ph)
+        global dh
         dh = deck.deal(num=2)
 
         # End game if player has 21
@@ -193,40 +196,80 @@ class Blackjack:
         condition2 = MessagePredicate.lower_contained_in((_("hit"), _("stay")), ctx=ctx)
 
         embed = self.bj_embed(ctx, ph, dh, ph_count, initial=True)
-        msg = await ctx.send(ctx.author.mention, embed=embed)
+        row_of_buttons = [
+            ActionRow(
+                Button(
+                    style=ButtonStyle.green,
+                    label="Hit",
+                    custom_id="hit",
+                ),
+                Button(
+                    style=ButtonStyle.red,
+                    label="Stay",
+                    custom_id="stay",
+                ),
+                Button(
+                    style=ButtonStyle.blurple,
+                    label="Double",
+                    custom_id="double",
+                ),
+            ),
+        ]
+        msg = await ctx.reply(ctx.author.mention, embed=embed, components=row_of_buttons)
 
+
+        def is_author(inter):
+            # Note that this check must take only 1 arg
+            return inter.author == ctx.author
         try:
-            choice = await ctx.bot.wait_for("message", check=condition1, timeout=35.0)
+            inter = await ctx.wait_for_button_click(is_author, timeout=35)
         except asyncio.TimeoutError:
             dh = self.dealer(dh)
             return ph, dh, amount, msg
+        option = inter.clicked_button.label
+        try:
+            await inter.reply(type=ResponseType.DeferredUpdateMessage)
+        except:
+            await msg.edit(content="An error occured, forcing stay.")
+            option = "stay"
 
-        if choice.content.lower() == _("stay"):
+        if option.lower() == _("stay"):
             dh = self.dealer(dh)
             return ph, dh, amount, msg
-
-        if choice.content.lower() == _("double"):
+        if option.lower() == _("double"):
             return await self.double_down(ctx, ph, dh, amount, condition2, message=msg)
-        else:
+        elif option.lower() == "hit":
             ph, dh, message = await self.bj_loop(ctx, ph, dh, ph_count, condition2, message=msg)
             dh = self.dealer(dh)
             return ph, dh, amount, msg
+
+        # try:
+        #     choice = await ctx.bot.wait_for("message", check=condition1, timeout=35.0)
+        # except asyncio.TimeoutError:
 
     async def double_down(self, ctx, ph, dh, amount, condition2, message):
         try:
             await bank.withdraw_credits(ctx.author, amount)
         except ValueError:
             await ctx.send(_("{} You can not cover the bet. Please choose hit or stay.").format(ctx.author.mention))
-
+            def is_author(inter):
+            # Note that this check must take only 1 arg
+                return inter.author == ctx.author
             try:
-                choice2 = await ctx.bot.wait_for("message", check=condition2, timeout=35.0)
+                inter = await ctx.wait_for_button_click(is_author, timeout=35)
             except asyncio.TimeoutError:
-                return ph, dh, amount, message
-
-            if choice2.content.lower() == _("stay"):
                 dh = self.dealer(dh)
                 return ph, dh, amount, message
-            elif choice2.content.lower() == _("hit"):
+            choice2 = inter.clicked_button.label
+            try:
+                await inter.reply(type=ResponseType.DeferredUpdateMessage)
+            except:
+                await message.edit("An error occured, forcing stay.")
+                choice2 = "stay"
+            if choice2.lower() == _("stay"):
+                dh = self.dealer(dh)
+                return ph, dh, amount, message
+            elif choice2.lower() == _("hit"):
                 ph, dh, message = await self.bj_loop(
                     ctx, ph, dh, deck.bj_count(ph), condition2, message=message
                 )
@@ -273,12 +316,21 @@ class Blackjack:
                 await message.edit(content=ctx.author.mention, embed=embed)
             else:
                 await ctx.send(content=ctx.author.mention, embed=embed)
+            def is_author(inter):
+            # Note that this check must take only 1 arg
+                return inter.author == ctx.author
             try:
-                resp = await ctx.bot.wait_for("message", check=condition2, timeout=35.0)
+                inter = await ctx.wait_for_button_click(is_author, timeout=35)
             except asyncio.TimeoutError:
                 break
+            choice2 = inter.clicked_button.label
+            try:
+                await inter.reply(type=ResponseType.DeferredUpdateMessage)
+            except:
+                await message.edit(content="An error occured, forcing stay.")
+                break
 
-            if resp.content.lower() == _("stay"):
+            if choice2.lower() == _("stay"):
                 break
             await asyncio.sleep(1)
 
@@ -307,13 +359,14 @@ class Blackjack:
         after = _("**Options:** hit or stay")
         options = "**Outcome:** " + outcome if outcome else start if initial else after
         count2 = deck.bj_count(dh, hole=True) if not outcome else deck.bj_count(dh)
-        hole = " ".join(deck.fmt_hand([dh[0]]))
-        dealer_hand = hole if not outcome else ", ".join(deck.fmt_hand(dh))
-
+        hole = " ".join(deck.fmt_hand([dh[0]], ctx))
+        dealer_hand = hole if not outcome else ", ".join(deck.fmt_hand(dh, ctx))
         embed = discord.Embed(colour=0xFF0000)
+        if outcome == "Pushed":
+            embed.color = 0xe1e114
         embed.add_field(
             name=_("{}'s Hand").format(ctx.author.name),
-            value=hand.format(", ".join(deck.fmt_hand(ph)), count1),
+            value=hand.format(", ".join(deck.fmt_hand(ph, ctx)), count1),
         )
         embed.add_field(
             name=_("{}'s Hand").format(ctx.bot.user.name), value=hand.format(dealer_hand, count2)
@@ -332,7 +385,7 @@ class War:
     @game_engine("War")
     async def play(self, ctx, bet):
         outcome, player_card, dealer_card, amount, msg = await self.war_game(ctx, bet)
-        return await self.war_results(outcome, player_card, dealer_card, amount, message=msg)
+        return await self.war_results(outcome, player_card, dealer_card, amount, message=msg, ctx=ctx)
 
     async def war_game(self, ctx, bet):
         player_card, dealer_card, pc, dc = self.war_draw()
@@ -363,18 +416,43 @@ class War:
             "you can go to war.\nIf you go to war your bet will be doubled, "
             "but the multiplier is only applied to your original bet, the rest will "
             "be pushed."
-        ).format(deck.fmt_card(player_card))
+        ).format(deck.fmt_card(player_card, ctx))
+        row_of_buttons = [
+            ActionRow(
+                Button(
+                    style=ButtonStyle.green,
+                    label="War",
+                    custom_id="war",
+                ),
+                Button(
+                    style=ButtonStyle.red,
+                    label="Surrender",
+                    custom_id="surrender",
+                ),
+            ),
+        ]
+
         if not await self.old_message_cache.get_guild(ctx.guild):
-            await message.edit(content=content)
+            await message.edit(content=content, components=row_of_buttons)
         else:
-            await ctx.send(content=content)
-        pred = MessagePredicate.lower_contained_in((_("war"), _("surrender"), _("ffs")), ctx=ctx)
+            await ctx.send(content=content, components=row_of_buttons)
+        def is_author(inter):
+            # Note that this check must take only 1 arg
+            return inter.author == ctx.author
         try:
-            choice = await ctx.bot.wait_for("message", check=pred, timeout=35.0)
+            inter = await ctx.wait_for_button_click(is_author, timeout=35)
         except asyncio.TimeoutError:
             return "Surrender", player_card, dealer_card, bet, message
+        
+        choice = inter.clicked_button.label
 
-        if choice is None or choice.content.title() in (_("Surrender"), _("Ffs")):
+        try:
+            await inter.reply(type=ResponseType.DeferredUpdateMessage)
+        except:
+            await message.edit(content="An error occured, forcing surrender.")
+            return "Surrender", player_card, dealer_card, bet, message
+
+        if choice is None or choice.title() in (_("Surrender"), _("Ffs")):
             outcome = "Surrender"
             bet /= 2
             return outcome, player_card, dealer_card, bet, message
@@ -400,9 +478,9 @@ class War:
             return outcome, player_card, dealer_card, bet, message
 
     @staticmethod
-    async def war_results(outcome, player_card, dealer_card, amount, message=None):
+    async def war_results(outcome, player_card, dealer_card, amount, message=None, ctx=None):
         msg = _("**Player Card:** {}\n**Dealer Card:** {}\n").format(
-            deck.fmt_card(player_card), deck.fmt_card(dealer_card)
+            deck.fmt_card(player_card, ctx), deck.fmt_card(dealer_card, ctx)
         )
         if outcome == "Win":
             msg += _("**Result**: Winner")
@@ -457,19 +535,43 @@ class Double:
             else:
                 bet *= 2
 
-            pred = MessagePredicate.lower_contained_in((_("double"), _("cash out")), ctx=ctx)
+            row_of_buttons = [
+                ActionRow(
+                    Button(
+                        style=ButtonStyle.green,
+                        label="Double",
+                        custom_id="Double",
+                    ),
+                    Button(
+                        style=ButtonStyle.blurple,
+                        label="Cash Out",
+                        custom_id="Cash Out",
+                    ),
+                ),
+            ]
 
             embed = self.double_embed(ctx, count, bet)
             if (not await self.old_message_cache.get_guild(ctx.guild)) and message:
-                await message.edit(content=ctx.author.mention, embed=embed)
+                await message.edit(content=ctx.author.mention, embed=embed, components=row_of_buttons)
             else:
-                message = await ctx.send(ctx.author.mention, embed=embed)
+                message = await ctx.send(ctx.author.mention, embed=embed, components=row_of_buttons)
+            def is_author(inter):
+            # Note that this check must take only 1 arg
+                return inter.author == ctx.author
             try:
-                resp = await ctx.bot.wait_for("message", check=pred, timeout=35.0)
+                inter = await ctx.wait_for_button_click(is_author, timeout=35)
             except asyncio.TimeoutError:
                 break
 
-            if resp.content.lower() == _("cash out"):
+            choice = inter.clicked_button.label
+
+            try:
+                await inter.reply(type=ResponseType.DeferredUpdateMessage)
+            except:
+                await message.edit(content="An error occured, forcing cash out.")
+                break
+
+            if choice.lower() == _("cash out"):
                 break
             await asyncio.sleep(1)
 
@@ -501,6 +603,7 @@ class Double:
         embed.add_field(name=_("{}'s Score").format(ctx.author.name), value=score)
         embed.add_field(name="\u200b", value=options, inline=False)
         if not outcome:
+            embed.colour = 0x00FF00
             embed.add_field(
                 name="\u200b", value="Remember, you can cash out at anytime.", inline=False
             )

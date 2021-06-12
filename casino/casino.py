@@ -803,7 +803,7 @@ class Casino(Database, commands.Cog):
         await self.bot.wait_until_ready()
         try:
             while True:
-                await asyncio.sleep(300)  # Wait 5 minutes to cycle again
+                await asyncio.sleep(60)  # Wait 5 minutes to cycle again
                 is_global = await super().casino_is_global()
                 if is_global:
                     await self.global_updater()
