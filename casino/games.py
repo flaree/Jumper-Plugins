@@ -215,7 +215,10 @@ class Blackjack:
                 ),
             ),
         ]
-        msg = await ctx.reply(ctx.author.mention, embed=embed, components=row_of_buttons)
+        try:
+            msg = await ctx.reply(ctx.author.mention, embed=embed, components=row_of_buttons)
+        except:
+            msg = await ctx.send(ctx.author.mention, embed=embed, components=row_of_buttons)
 
 
         def is_author(inter):
