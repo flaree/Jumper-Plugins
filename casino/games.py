@@ -376,14 +376,13 @@ class Blackjack:
         after = _("**Options:** hit or stay")
         options = "**Outcome:** " + outcome if outcome else start if initial else after
         count2 = deck.bj_count(dh, hole=True) if not outcome else deck.bj_count(dh)
-        hole = " ".join(deck.fmt_hand([dh[0]], ctx))
-        dealer_hand = hole if not outcome else ", ".join(deck.fmt_hand(dh, ctx))
+        hole = " ".join(deck.fmt_hand([dh[0]]))
+        dealer_hand = hole if not outcome else ", ".join(deck.fmt_hand(dh))
+
         embed = discord.Embed(colour=0xFF0000)
-        if outcome == "Pushed":
-            embed.color = 0xe1e114
         embed.add_field(
             name=_("{}'s Hand").format(ctx.author.name),
-            value=hand.format(", ".join(deck.fmt_hand(ph, ctx)), count1),
+            value=hand.format(", ".join(deck.fmt_hand(ph)), count1),
         )
         embed.add_field(
             name=_("{}'s Hand").format(ctx.bot.user.name), value=hand.format(dealer_hand, count2)
