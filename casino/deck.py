@@ -1,7 +1,6 @@
 import random
 from collections import deque
 from itertools import product, chain
-import discord
 
 
 class Deck:
@@ -52,14 +51,12 @@ class Deck:
         return count
 
     @staticmethod
-    def fmt_hand(hand: list, ctx):
-        #print(["{} {}, {}".format(y, discord.utils.get(ctx.bot.emojis, id=int(x)), x) for x, y in hand])
-        return ["{} {}".format(y, discord.utils.get(ctx.bot.emojis, id=int(x))) for x, y in hand]
+    def fmt_hand(hand: list):
+        return ["{} {}".format(y, x) for x, y in hand]
 
     @staticmethod
-    def fmt_card(card, ctx):
-        #print(discord.utils.get(ctx.bot.emojis, id=int(card[0])), card[0])
-        return "{} {}".format(card[1], discord.utils.get(ctx.bot.emojis, id=int(card[0])))
+    def fmt_card(card):
+        return "{1} {0}".format(*card)
 
     @staticmethod
     def hand_check(hand: list, card):
@@ -115,8 +112,6 @@ class Deck:
             del self._deck[0]
 
     def new(self):
-        #cards = [(536507846830063638, 4), (536507847131791360, 3), (536507847224197120, 2), (536507847224197150, 3), (536507847228522496, 3), (536507847291174923, 5), (536507847320666112, 5), (536507847333380096, 5), (536507847337443358, 2), (536507847341768714, 4), (536507847429718026, 5), (536507847433912320, 2), (536507847496695808, 4), (536507847521861642, 2), (536507847559610368, 4), (536507847559872552, 3), (536507847626719233, 6), (536507848537145346, 8), (536507848646066187, 7), (536507848658649089, 10), (536507848717500445, 6), (536507848759312396, 9), (536507848817901589, 7), (536507848826552320, 8), (536507848834940938, 7), (536507848977416202, 9), (536507848981610496, 6), (536507849052913684, 9), (536507849061302272, 6), (536507849128542208, 10), (536507849212428290, 8), (536507849229074432, 9), (536507849828859929, 8), (536507850055483392, 7), (536507850273587201, 'Ace'), (536507850474651649, 'Ace'), (536507850483040256, 10), (536507850500079618, 'Jack'), (536507850516725771, 'King'), (536507850562732040, 'Ace'), (536507850663657482, 'Jack'), (536507850688692224, 'Queen'), (536507850709532672, 'Queen'), (536507850709794836, 'Ace'), (536507850722115584, 'Queen'), (536507850747281428, 'King'), (536507850747412481, 'Queen'), (536507850810327050, 'Jack'), (536507850814652416, 'King'), (657046607195275265, 'Jack'), (657046607203663874, 10), (657046607321104445, 'King')]
         cards = product(self.suites, chain(range(2, 11), ("King", "Queen", "Jack", "Ace")))
-        #print(cards)
         self._deck = deque(cards)
         self.shuffle()
